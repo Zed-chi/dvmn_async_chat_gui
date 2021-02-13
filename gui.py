@@ -99,19 +99,6 @@ def create_status_panel(root_frame):
 
     return (nickname_label, status_read_label, status_write_label)
 
-async def listen_chat(q):
-    reader, writer = await asyncio.wait_for(
-        asyncio.open_connection("minechat.dvmn.org", 5000), timeout=5.0
-    )
-    try:
-        while True:
-            data = await asyncio.wait_for(reader.readline(), timeout=5.0)
-            message = data.decode("utf-8")
-            q.put_nowait(message)
-           
-    finally:
-        writer.close()
-        await writer.wait_closed()
 
 async def draw(messages_queue, sending_queue, status_updates_queue):
     root = tk.Tk()
@@ -142,6 +129,5 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
     await asyncio.gather(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
-        update_status_panel(status_labels, status_updates_queue),
-        listen_chat(messages_queue)
+        update_status_panel(status_labels, status_updates_queue),       
     )
