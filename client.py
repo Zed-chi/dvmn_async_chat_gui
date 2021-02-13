@@ -1,9 +1,11 @@
 import asyncio
 import gui
 import time
+from listen_minechat import get_args as view_args
 
 
 async def main():
+    args = view_args()
     loop = asyncio.get_event_loop()
 
     messages_queue = asyncio.Queue()
