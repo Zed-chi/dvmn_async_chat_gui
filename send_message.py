@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-#from gui import NicknameReceived, SendingConnectionStateChanged, ReadConnectionStateChanged
+from gui import NicknameReceived, SendingConnectionStateChanged, ReadConnectionStateChanged
 
 import aiofiles
 import configargparse
@@ -34,12 +34,12 @@ def get_args():
     parser.add(
         "--name", required=False, help="name for registration", default="user",
     )
-    parser.add("message", help="message to send")
+    parser.add("--message", help="message to send")
 
     return parser.parse_args()
 
 
-async def send_message(args):
+async def send_message(args, sender_queue):
     reader, writer = await asyncio.open_connection(args.host, args.port)
 
     data = await reader.readline()
@@ -52,9 +52,11 @@ async def send_message(args):
         sanitized_name = sanitize(name)
         await register(sanitized_name, reader, writer)
 
-    try:        
-        sanitized_message = sanitize(args.message)
-        await submit_message(sanitized_message, reader, writer)
+    try:
+        while True:
+            message = await sender_queue.get()        
+            sanitized_message = sanitize(args.message)
+            await submit_message(sanitized_message, reader, writer)
     finally:
         writer.close()
         await writer.wait_closed()

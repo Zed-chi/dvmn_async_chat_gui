@@ -17,7 +17,7 @@ async def main():
     status_updates_queue = asyncio.Queue()
     
     await asyncio.gather(
-        send_message(sender_args),
+        send_message(sender_args, sending_queue),
         read_msgs(listener_args.host, listener_args.port, messages_queue),
         gui.draw(messages_queue, sending_queue, status_updates_queue),
         loop=loop
