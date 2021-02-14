@@ -116,7 +116,7 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
     input_field = tk.Entry(input_frame)
     input_field.pack(side="left", fill=tk.X, expand=True)
 
-    input_field.bind("<Return>", lambda event: process_new_message(input_field, messages_queue))
+    input_field.bind("<Return>", lambda event: process_new_message(input_field, sending_queue))
 
     send_button = tk.Button(input_frame)
     send_button["text"] = "Отправить"
