@@ -25,7 +25,10 @@ def get_args():
         default="minechat.dvmn.org",
     )
     parser.add(
-        "--port", required=False, help="port of sender client", default=5000,
+        "--port",
+        required=False,
+        help="port of sender client",
+        default=5000,
     )
     parser.add(
         "--log_path",
@@ -38,7 +41,12 @@ def get_args():
 
 
 async def read_msgs(
-    host, port, queue, status_updates_queue, history_path=None,
+    host,
+    port,
+    queue,
+    status_updates_queue,
+    connection_queue,
+    history_path=None,
 ):
     connection_lost = False
     while True:
@@ -47,7 +55,8 @@ async def read_msgs(
                 ReadConnectionStateChanged.INITIATED,
             )
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(host, port), timeout=5.0,
+                asyncio.open_connection(host, port),
+                timeout=5.0,
             )
             status_updates_queue.put_nowait(
                 ReadConnectionStateChanged.ESTABLISHED,
@@ -55,8 +64,10 @@ async def read_msgs(
             try:
                 while True:
                     data = await asyncio.wait_for(
-                        reader.readline(), timeout=5.0,
+                        reader.readline(),
+                        timeout=5.0,
                     )
+                    connection_queue.put_nowait("New message in chat")
                     message = data.decode("utf-8")
                     now = datetime.now().strftime("[%d.%m.%y %H:%M]")
                     if history_path:
@@ -66,6 +77,7 @@ async def read_msgs(
                             encoding="utf-8",
                         ) as f:
                             await f.write(f"{now} {message}")
+
                     queue.put_nowait(message.strip())
             finally:
                 writer.close()

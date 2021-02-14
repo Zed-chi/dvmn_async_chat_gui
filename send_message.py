@@ -3,6 +3,7 @@ import json
 import logging
 import time
 from concurrent.futures._base import TimeoutError
+
 # from datetime import datetime
 from socket import gaierror
 
@@ -54,7 +55,9 @@ def get_args():
     return parser.parse_args()
 
 
-async def send_message(args, sender_queue, status_updates_queue):
+async def send_message(
+    args, sender_queue, status_updates_queue, connection_queue
+):
     connection_lost = False
     while True:
         status_updates_queue.put_nowait(
@@ -62,28 +65,38 @@ async def send_message(args, sender_queue, status_updates_queue):
         )
         try:
             reader, writer = await asyncio.open_connection(
-                args.host, args.port,
+                args.host,
+                args.port,
             )
             status_updates_queue.put_nowait(
                 SendingConnectionStateChanged.ESTABLISHED,
             )
             try:
                 data = await reader.readline()
+                connection_queue.put_nowait("Prompt before auth")
                 logging.info(data.decode())
 
                 if args.token:
                     await authorize(
-                        args.token, reader, writer, status_updates_queue,
+                        args.token,
+                        reader,
+                        writer,
+                        status_updates_queue,
+                        connection_queue,
                     )
                 else:
                     name = args.name if args.name else get_name_from_input()
                     sanitized_name = sanitize(name)
-                    await register(sanitized_name, reader, writer)
+                    await register(
+                        sanitized_name, reader, writer, connection_queue
+                    )
 
                 while True:
                     message = await sender_queue.get()
                     sanitized_message = sanitize(message)
-                    await submit_message(sanitized_message, reader, writer)
+                    await submit_message(
+                        sanitized_message, reader, writer, connection_queue
+                    )
             finally:
                 status_updates_queue.put_nowait(
                     SendingConnectionStateChanged.CLOSED,
@@ -105,13 +118,14 @@ async def send_message(args, sender_queue, status_updates_queue):
                 time.sleep(5)
 
 
-async def submit_message(message, reader, writer):
+async def submit_message(message, reader, writer, connection_queue):
     if not message:
         return
     writer.write(f"{message}\n\n".encode())
     await writer.drain()
 
     data = await reader.readline()
+    connection_queue.put_nowait("Message accepted")
     logging.info(data.decode())
 
 
@@ -122,12 +136,15 @@ def get_name_from_input():
             return name
 
 
-async def authorize(token, reader, writer, status_updates_queue):
+async def authorize(
+    token, reader, writer, status_updates_queue, connection_queue
+):
     writer.write(f"{token}\n".encode())
     await writer.drain()
 
     data = await reader.readline()
     response_info = data.decode().strip()
+    connection_queue.put_nowait("Auth info response")
     logging.info(f"respose is {response_info}")
 
     user_info_dict = json.loads(response_info)
@@ -142,17 +159,19 @@ async def authorize(token, reader, writer, status_updates_queue):
         )
 
 
-async def register(name, reader, writer):
+async def register(name, reader, writer, connection_queue):
     writer.write("\n".encode())
     await writer.drain()
 
     data = await reader.readline()
+    connection_queue.put_nowait("Auth name question")
     logging.info(data.decode())
 
     writer.write(f"{name}\n\n".encode())
     await writer.drain()
 
     data = await reader.readline()
+    connection_queue.put_nowait("Auth info response")
     info_json = data.decode().strip()
     user_info_dict = json.loads(info_json)
     await save_token(user_info_dict["account_hash"])
@@ -161,6 +180,7 @@ async def register(name, reader, writer):
     await writer.drain()
 
     data = await reader.readline()
+    connection_queue.put_nowait("welcome message after registration")
     logging.info(data.decode())
 
 

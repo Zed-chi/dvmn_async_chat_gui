@@ -18,25 +18,31 @@ async def main():
     messages_queue = asyncio.Queue()
     sending_queue = asyncio.Queue()
     status_updates_queue = asyncio.Queue()
+    connection_queue = asyncio.Queue()
 
     await asyncio.gather(
-        send_message(sender_args, sending_queue, status_updates_queue),
+        connection_routine(connection_queue),
+        send_message(
+            sender_args, sending_queue, status_updates_queue, connection_queue
+        ),
         read_msgs(
             listener_args.host,
             listener_args.port,
             messages_queue,
             status_updates_queue,
+            connection_queue,
         ),
         gui.draw(messages_queue, sending_queue, status_updates_queue),
         loop=loop,
     )
 
 
-async def generate_msgs(q):
+async def connection_routine(connection_queue):
+    status = "Connection is alive"
     while True:
-        msg = round(time.time())
-        q.put_nowait(msg)
-        await asyncio.sleep(1)
+        now = round(time.time())
+        msg = await connection_queue.get()
+        print(f"[{now}] {status}. {msg}")
 
 
 if __name__ == "__main__":
