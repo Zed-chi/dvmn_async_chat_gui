@@ -36,10 +36,10 @@ def get_args():
     return parser.parse_args()
 
 
-async def listen_chat(args):
+async def read_msgs(host, port, queue, history_path=None):
 
     reader, writer = await asyncio.wait_for(
-        asyncio.open_connection(args.host, args.port), timeout=5.0
+        asyncio.open_connection(host, port), timeout=5.0
     )
 
     try:
@@ -47,14 +47,14 @@ async def listen_chat(args):
             data = await asyncio.wait_for(reader.readline(), timeout=5.0)
             message = data.decode("utf-8")
             now = datetime.now().strftime("[%d.%m.%y %H:%M]")
-            if "history_path" in args:
+            if history_path:
                 async with aiofiles.open(
-                    args.history_path,
+                    history_path,
                     mode="a",
                     encoding="utf-8",
                 ) as f:
-                    await f.write(f"{now} {message}")
-            print(f"{now} {message.strip()}")
+                    await f.write(f"{now} {message}")            
+            queue.put_nowait(message.strip())
     finally:
         writer.close()
         await writer.wait_closed()
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     first_connection_lost = True
     while True:
         try:
-            asyncio.run(listen_chat(args))
+            asyncio.run(read_msgs(args.host, args.port))
         except KeyboardInterrupt:
             print("Client disconnected")
             break
