@@ -1,9 +1,11 @@
 import asyncio
+from concurrent.futures._base import TimeoutError
 import time
 import tkinter as tk
 from tkinter import messagebox
 
 import gui
+from async_timeout import timeout
 from listen_minechat import get_args as listen_args
 from listen_minechat import read_msgs
 from send_message import get_args as send_args
@@ -40,9 +42,15 @@ async def main():
 async def connection_routine(connection_queue):
     status = "Connection is alive"
     while True:
-        now = round(time.time())
-        msg = await connection_queue.get()
-        print(f"[{now}] {status}. {msg}")
+        try:
+            async with timeout(5) as cm:
+                msg = await connection_queue.get()
+                now = round(time.time())            
+                print(f"[{now}] {status}. {msg}")   
+        except TimeoutError:
+            now = round(time.time())            
+            print(f"[{now}] 1s timeout is elapsed")    
+        
 
 
 if __name__ == "__main__":
