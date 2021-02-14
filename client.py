@@ -1,10 +1,13 @@
 import asyncio
 import gui
 import time
+import tkinter as tk
+
+from tkinter import messagebox
 from listen_minechat import get_args as listen_args
 from listen_minechat import read_msgs
 from send_message import get_args as send_args
-from send_message import send_message
+from send_message import send_message, AuthError
 
 
 async def main():
@@ -17,9 +20,9 @@ async def main():
     status_updates_queue = asyncio.Queue()
     
     await asyncio.gather(
-        send_message(sender_args, sending_queue),
+        send_message(sender_args, sending_queue, status_updates_queue),
         read_msgs(listener_args.host, listener_args.port, messages_queue),
-        gui.draw(messages_queue, sending_queue, status_updates_queue),
+        #gui.draw(messages_queue, sending_queue, status_updates_queue),
         loop=loop
     )
     
@@ -32,4 +35,9 @@ async def generate_msgs(q):
         
 
 if __name__ == "__main__":        
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except AuthError as e:
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo("Ошибка", "Ошибка чтения")

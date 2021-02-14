@@ -8,6 +8,8 @@ import configargparse
 
 CONFIG_FILEPATH = "./sender_config.cfg"
 
+class AuthError(Exception):
+    pass
 
 def get_args():
     parser = configargparse.ArgParser(
@@ -39,27 +41,31 @@ def get_args():
     return parser.parse_args()
 
 
-async def send_message(args, sender_queue):
-    reader, writer = await asyncio.open_connection(args.host, args.port)
-
-    data = await reader.readline()
-    logging.info(data.decode())
-
-    if args.token:
-        await authorize(args.token, reader, writer)
-    else:
-        name = args.name if args.name else get_name_from_input()
-        sanitized_name = sanitize(name)
-        await register(sanitized_name, reader, writer)
-
+async def send_message(args, sender_queue, status_updates_queue):
     try:
+        reader, writer = await asyncio.open_connection(args.host, args.port)
+
+        data = await reader.readline()
+        logging.info(data.decode())
+
+        if args.token:
+            await authorize(args.token, reader, writer, status_updates_queue)
+        else:
+            name = args.name if args.name else get_name_from_input()
+            sanitized_name = sanitize(name)
+            await register(sanitized_name, reader, writer)
+
         while True:
             message = await sender_queue.get()        
             sanitized_message = sanitize(args.message)
             await submit_message(sanitized_message, reader, writer)
+    except AuthError:
+        raise AuthError("qweqw")
     finally:
         writer.close()
         await writer.wait_closed()
+
+
 
 
 async def submit_message(message, reader, writer):
@@ -79,7 +85,7 @@ def get_name_from_input():
             return name
 
 
-async def authorize(token, reader, writer):
+async def authorize(token, reader, writer, status_updates_queue):
     writer.write(f"{token}\n".encode())
     await writer.drain()
 
@@ -88,8 +94,8 @@ async def authorize(token, reader, writer):
     logging.info(f"respose is {response_info}")
     
     user_info_dict = json.loads(response_info)
-    if not user_info_dict:
-        raise ValueError("Invalid token. Check or register new.")
+    if not user_info_dict:        
+        raise AuthError("Invalid token. Check or register new.")
     else:        
         print(f"Выполнена авторизация. Пользователь {user_info_dict['nickname']}.")
 
