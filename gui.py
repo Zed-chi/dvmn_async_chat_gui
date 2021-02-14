@@ -89,17 +89,29 @@ def create_status_panel(root_frame):
     connections_frame.pack(side="left")
 
     nickname_label = tk.Label(
-        connections_frame, height=1, fg="grey", font="arial 10", anchor="w",
+        connections_frame,
+        height=1,
+        fg="grey",
+        font="arial 10",
+        anchor="w",
     )
     nickname_label.pack(side="top", fill=tk.X)
 
     status_read_label = tk.Label(
-        connections_frame, height=1, fg="grey", font="arial 10", anchor="w",
+        connections_frame,
+        height=1,
+        fg="grey",
+        font="arial 10",
+        anchor="w",
     )
     status_read_label.pack(side="top", fill=tk.X)
 
     status_write_label = tk.Label(
-        connections_frame, height=1, fg="grey", font="arial 10", anchor="w",
+        connections_frame,
+        height=1,
+        fg="grey",
+        font="arial 10",
+        anchor="w",
     )
     status_write_label.pack(side="top", fill=tk.X)
 
@@ -130,7 +142,8 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
     send_button = tk.Button(input_frame)
     send_button["text"] = "Отправить"
     send_button["command"] = lambda: process_new_message(
-        input_field, sending_queue,
+        input_field,
+        sending_queue,
     )
     send_button.pack(side="left")
 
