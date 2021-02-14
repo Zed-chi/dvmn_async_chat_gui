@@ -1,15 +1,22 @@
 import asyncio
 import json
 import logging
-from gui import NicknameReceived, SendingConnectionStateChanged, ReadConnectionStateChanged
+import time
+from concurrent.futures._base import TimeoutError
+# from datetime import datetime
+from socket import gaierror
 
 import aiofiles
 import configargparse
+from gui import NicknameReceived, SendingConnectionStateChanged
+from requests.exceptions import ConnectionError
 
 CONFIG_FILEPATH = "./sender_config.cfg"
 
+
 class AuthError(Exception):
     pass
+
 
 def get_args():
     parser = configargparse.ArgParser(
@@ -24,7 +31,10 @@ def get_args():
         default="minechat.dvmn.org",
     )
     parser.add(
-        "--port", required=False, help="port of sender client", default=5050,
+        "--port",
+        required=False,
+        help="port of sender client",
+        default=5050,
     )
     parser.add("--token", help="token", required=False)
     parser.add(
@@ -34,7 +44,10 @@ def get_args():
         default="./sender.log",
     )
     parser.add(
-        "--name", required=False, help="name for registration", default="user",
+        "--name",
+        required=False,
+        help="name for registration",
+        default="user",
     )
     parser.add("--message", help="message to send")
 
@@ -42,30 +55,54 @@ def get_args():
 
 
 async def send_message(args, sender_queue, status_updates_queue):
-    try:
-        reader, writer = await asyncio.open_connection(args.host, args.port)
+    connection_lost = False
+    while True:
+        status_updates_queue.put_nowait(
+            SendingConnectionStateChanged.INITIATED,
+        )
+        try:
+            reader, writer = await asyncio.open_connection(
+                args.host, args.port,
+            )
+            status_updates_queue.put_nowait(
+                SendingConnectionStateChanged.ESTABLISHED,
+            )
+            try:
+                data = await reader.readline()
+                logging.info(data.decode())
 
-        data = await reader.readline()
-        logging.info(data.decode())
+                if args.token:
+                    await authorize(
+                        args.token, reader, writer, status_updates_queue,
+                    )
+                else:
+                    name = args.name if args.name else get_name_from_input()
+                    sanitized_name = sanitize(name)
+                    await register(sanitized_name, reader, writer)
 
-        if args.token:
-            await authorize(args.token, reader, writer, status_updates_queue)
-        else:
-            name = args.name if args.name else get_name_from_input()
-            sanitized_name = sanitize(name)
-            await register(sanitized_name, reader, writer)
-
-        while True:
-            message = await sender_queue.get()        
-            sanitized_message = sanitize(args.message)
-            await submit_message(sanitized_message, reader, writer)
-    except AuthError:
-        raise AuthError("qweqw")
-    finally:
-        writer.close()
-        await writer.wait_closed()
-
-
+                while True:
+                    message = await sender_queue.get()
+                    sanitized_message = sanitize(message)
+                    await submit_message(sanitized_message, reader, writer)
+            finally:
+                status_updates_queue.put_nowait(
+                    SendingConnectionStateChanged.CLOSED,
+                )
+                writer.close()
+                await writer.wait_closed()
+        except AuthError:
+            raise AuthError("qweqw")
+        except (ConnectionError, TimeoutError, gaierror):
+            print("Connection lost... Reconnecting")
+            status_updates_queue.put_nowait(
+                status_updates_queue.put_nowait(
+                    SendingConnectionStateChanged.CLOSED,
+                ),
+            )
+            if connection_lost:
+                connection_lost = True
+            else:
+                time.sleep(5)
 
 
 async def submit_message(message, reader, writer):
@@ -92,12 +129,17 @@ async def authorize(token, reader, writer, status_updates_queue):
     data = await reader.readline()
     response_info = data.decode().strip()
     logging.info(f"respose is {response_info}")
-    
+
     user_info_dict = json.loads(response_info)
-    if not user_info_dict:        
+    if not user_info_dict:
         raise AuthError("Invalid token. Check or register new.")
-    else:        
-        print(f"Выполнена авторизация. Пользователь {user_info_dict['nickname']}.")
+    else:
+        print(
+            f"Выполнена авторизация. Пользователь {user_info_dict['nickname']}.",
+        )
+        status_updates_queue.put_nowait(
+            NicknameReceived(user_info_dict["nickname"]),
+        )
 
 
 async def register(name, reader, writer):
