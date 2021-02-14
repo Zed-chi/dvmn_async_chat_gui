@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+sender_config.cfg
+listener_config.cfg
