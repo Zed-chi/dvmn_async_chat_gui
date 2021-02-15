@@ -21,13 +21,9 @@ async def main():
     sending_queue = asyncio.Queue()
     status_updates_queue = asyncio.Queue()
 
-    await asyncio.gather(        
-        handle_connection(
-            messages_queue, sending_queue, status_updates_queue
-        ),
-        gui.draw(messages_queue, sending_queue, status_updates_queue),
-        loop=loop,
-    )
+    async with create_task_group() as tg:
+        await tg.spawn(handle_connection, messages_queue, sending_queue, status_updates_queue)
+        await tg.spawn(gui.draw, messages_queue, sending_queue, status_updates_queue)
 
 
 async def connection_routine(connection_queue):
