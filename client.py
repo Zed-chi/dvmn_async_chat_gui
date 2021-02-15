@@ -13,17 +13,21 @@ from listen_minechat import read_msgs
 from requests.exceptions import ConnectionError
 from send_message import get_args as send_args
 from send_message import send_message, AuthError
+from gui import TkAppClosed
 
 
 async def main():
-    loop = asyncio.get_event_loop()
-    messages_queue = asyncio.Queue()
-    sending_queue = asyncio.Queue()
-    status_updates_queue = asyncio.Queue()
+    try:    
+        messages_queue = asyncio.Queue()
+        sending_queue = asyncio.Queue()
+        status_updates_queue = asyncio.Queue()
 
-    async with create_task_group() as tg:
-        await tg.spawn(handle_connection, messages_queue, sending_queue, status_updates_queue)
-        await tg.spawn(gui.draw, messages_queue, sending_queue, status_updates_queue)
+        async with create_task_group() as tg:
+            await tg.spawn(handle_connection, messages_queue, sending_queue, status_updates_queue)
+            await tg.spawn(gui.draw, messages_queue, sending_queue, status_updates_queue)
+    except (KeyboardInterrupt, TkAppClosed):
+        print("app closed")
+
 
 
 async def connection_routine(connection_queue):

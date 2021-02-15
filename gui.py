@@ -3,7 +3,7 @@ import asyncio
 from tkinter.scrolledtext import ScrolledText
 from enum import Enum
 
-from anyio import sleep, create_task_group, run
+from anyio import create_task_group
 
 class TkAppClosed(Exception):
     pass
@@ -120,41 +120,38 @@ def create_status_panel(root_frame):
 
 
 async def draw(messages_queue, sending_queue, status_updates_queue):
-    try:
-        root = tk.Tk()
+    root = tk.Tk()
 
-        root.title("Чат Майнкрафтера")
+    root.title("Чат Майнкрафтера")
 
-        root_frame = tk.Frame()
-        root_frame.pack(fill="both", expand=True)
+    root_frame = tk.Frame()
+    root_frame.pack(fill="both", expand=True)
 
-        status_labels = create_status_panel(root_frame)
+    status_labels = create_status_panel(root_frame)
 
-        input_frame = tk.Frame(root_frame)
-        input_frame.pack(side="bottom", fill=tk.X)
+    input_frame = tk.Frame(root_frame)
+    input_frame.pack(side="bottom", fill=tk.X)
 
-        input_field = tk.Entry(input_frame)
-        input_field.pack(side="left", fill=tk.X, expand=True)
+    input_field = tk.Entry(input_frame)
+    input_field.pack(side="left", fill=tk.X, expand=True)
 
-        input_field.bind(
-            "<Return>",
-            lambda event: process_new_message(input_field, sending_queue),
-        )
+    input_field.bind(
+        "<Return>",
+        lambda event: process_new_message(input_field, sending_queue),
+    )
 
-        send_button = tk.Button(input_frame)
-        send_button["text"] = "Отправить"
-        send_button["command"] = lambda: process_new_message(
-            input_field,
-            sending_queue,
-        )
-        send_button.pack(side="left")
+    send_button = tk.Button(input_frame)
+    send_button["text"] = "Отправить"
+    send_button["command"] = lambda: process_new_message(
+        input_field,
+        sending_queue,
+    )
+    send_button.pack(side="left")
 
-        conversation_panel = ScrolledText(root_frame, wrap="none")
-        conversation_panel.pack(side="top", fill="both", expand=True)
-        
-        async with create_task_group() as tg:
-            await tg.spawn(update_tk, root_frame)
-            await tg.spawn(update_conversation_history, conversation_panel, messages_queue)
-            await tg.spawn(update_status_panel, status_labels, status_updates_queue)
-    except TkAppClosed:
-        raise Exception()
+    conversation_panel = ScrolledText(root_frame, wrap="none")
+    conversation_panel.pack(side="top", fill="both", expand=True)
+    
+    async with create_task_group() as tg:
+        await tg.spawn(update_tk, root_frame)
+        await tg.spawn(update_conversation_history, conversation_panel, messages_queue)
+        await tg.spawn(update_status_panel, status_labels, status_updates_queue)
