@@ -1,16 +1,10 @@
 import asyncio
 import json
 import logging
-import time
-from concurrent.futures._base import TimeoutError
-
-# from datetime import datetime
-from socket import gaierror
 
 import aiofiles
 import configargparse
 from gui import NicknameReceived, SendingConnectionStateChanged
-from requests.exceptions import ConnectionError
 
 CONFIG_FILEPATH = "./sender_config.cfg"
 
@@ -58,64 +52,51 @@ def get_args():
 async def send_message(
     args, sender_queue, status_updates_queue, connection_queue
 ):
-    connection_lost = False
-    while True:
+    try:
         status_updates_queue.put_nowait(
             SendingConnectionStateChanged.INITIATED,
         )
+        reader, writer = await asyncio.open_connection(
+            args.host,
+            args.port,
+        )
+        status_updates_queue.put_nowait(
+            SendingConnectionStateChanged.ESTABLISHED,
+        )
         try:
-            reader, writer = await asyncio.open_connection(
-                args.host,
-                args.port,
-            )
-            status_updates_queue.put_nowait(
-                SendingConnectionStateChanged.ESTABLISHED,
-            )
-            try:
-                data = await reader.readline()
-                connection_queue.put_nowait("Prompt before auth")
-                logging.info(data.decode())
+            data = await reader.readline()
+            connection_queue.put_nowait("Prompt before auth")
+            logging.info(data.decode())
 
-                if args.token:
-                    await authorize(
-                        args.token,
-                        reader,
-                        writer,
-                        status_updates_queue,
-                        connection_queue,
-                    )
-                else:
-                    name = args.name if args.name else get_name_from_input()
-                    sanitized_name = sanitize(name)
-                    await register(
-                        sanitized_name, reader, writer, connection_queue
-                    )
-
-                while True:
-                    message = await sender_queue.get()
-                    sanitized_message = sanitize(message)
-                    await submit_message(
-                        sanitized_message, reader, writer, connection_queue
-                    )
-            finally:
-                status_updates_queue.put_nowait(
-                    SendingConnectionStateChanged.CLOSED,
+            if args.token:
+                await authorize(
+                    args.token,
+                    reader,
+                    writer,
+                    status_updates_queue,
+                    connection_queue,
                 )
-                writer.close()
-                await writer.wait_closed()
-        except AuthError:
-            raise AuthError("qweqw")
-        except (ConnectionError, TimeoutError, gaierror):
-            print("Connection lost... Reconnecting")
-            status_updates_queue.put_nowait(
-                status_updates_queue.put_nowait(
-                    SendingConnectionStateChanged.CLOSED,
-                ),
-            )
-            if connection_lost:
-                connection_lost = True
             else:
-                time.sleep(5)
+                name = args.name if args.name else get_name_from_input()
+                sanitized_name = sanitize(name)
+                await register(
+                    sanitized_name, reader, writer, connection_queue
+                )
+
+            while True:
+                message = await sender_queue.get()
+                sanitized_message = sanitize(message)
+                await submit_message(
+                    sanitized_message, reader, writer, connection_queue
+                )
+        finally:
+            status_updates_queue.put_nowait(
+                SendingConnectionStateChanged.CLOSED,
+            )
+            writer.close()
+            await writer.wait_closed()
+    except AuthError:
+        raise AuthError("")
 
 
 async def submit_message(message, reader, writer, connection_queue):

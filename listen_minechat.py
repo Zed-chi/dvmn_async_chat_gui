@@ -1,13 +1,10 @@
 import asyncio
-import time
-from concurrent.futures._base import TimeoutError
 from datetime import datetime
-from socket import gaierror
 
 import aiofiles
 import configargparse
 from gui import ReadConnectionStateChanged
-from requests.exceptions import ConnectionError
+
 
 CONFIG_FILEPATH = "./listener_config.cfg"
 
@@ -48,61 +45,28 @@ async def read_msgs(
     connection_queue,
     history_path=None,
 ):
-    connection_lost = False
-    while True:
-        try:
-            status_updates_queue.put_nowait(
-                ReadConnectionStateChanged.INITIATED,
-            )
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(host, port),
-                timeout=5.0,
-            )
-            status_updates_queue.put_nowait(
-                ReadConnectionStateChanged.ESTABLISHED,
-            )
-            try:
-                while True:
-                    data = await asyncio.wait_for(
-                        reader.readline(),
-                        timeout=5.0,
-                    )
-                    connection_queue.put_nowait("New message in chat")
-                    message = data.decode("utf-8")
-                    now = datetime.now().strftime("[%d.%m.%y %H:%M]")
-                    if history_path:
-                        async with aiofiles.open(
-                            history_path,
-                            mode="a",
-                            encoding="utf-8",
-                        ) as f:
-                            await f.write(f"{now} {message}")
+    status_updates_queue.put_nowait(
+        ReadConnectionStateChanged.INITIATED,
+    )
+    reader, writer = await asyncio.open_connection(host, port)
+    status_updates_queue.put_nowait(
+        ReadConnectionStateChanged.ESTABLISHED,
+    )
+    try:
+        while True:
+            data = await reader.readline()
+            connection_queue.put_nowait("New message in chat")
 
-                    queue.put_nowait(message.strip())
-            finally:
-                writer.close()
-                await writer.wait_closed()
-        except (ConnectionError, TimeoutError, gaierror):
-            print("Connection lost... Reconnecting")
-            status_updates_queue.put_nowait(ReadConnectionStateChanged.CLOSED)
-            if connection_lost:
-                connection_lost = True
-            else:
-                time.sleep(5)
-
-
-if __name__ == "__main__":
-    args = get_args()
-    first_connection_lost = True
-    while True:
-        try:
-            asyncio.run(read_msgs(args.host, args.port))
-        except KeyboardInterrupt:
-            print("Client disconnected")
-            break
-        except (ConnectionError, TimeoutError, gaierror):
-            print("Connection lost... Reconnecting")
-            if first_connection_lost:
-                first_connection_lost = False
-            else:
-                time.sleep(5)
+            message = data.decode("utf-8")
+            now = datetime.now().strftime("[%d.%m.%y %H:%M]")
+            if history_path:
+                async with aiofiles.open(
+                    history_path,
+                    mode="a",
+                    encoding="utf-8",
+                ) as f:
+                    await f.write(f"{now} {message}")
+            queue.put_nowait(message.strip())
+    finally:
+        writer.close()
+        await writer.wait_closed()
