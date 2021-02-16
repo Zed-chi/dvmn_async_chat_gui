@@ -107,8 +107,10 @@ async def handle_connection(
                 await tg.spawn(connection_routine, connection_queue)
         except (ConnectionError, TimeoutError, gaierror):
             now = round(time.time())
-            print(f"[{now}] 1s timeout is elapsed")
+            print(f"[{now}] 1s timeout is elapsed")            
+            await asyncio.sleep(5)
             print("Connection lost... Reconnecting")
+            
 
 
 if __name__ == "__main__":
