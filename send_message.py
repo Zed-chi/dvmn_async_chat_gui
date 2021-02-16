@@ -41,8 +41,7 @@ def get_args():
     parser.add(
         "--name",
         required=False,
-        help="name for registration",
-        default="user",
+        help="name for registration",        
     )
     parser.add("--message", help="message to send")
 
@@ -53,6 +52,7 @@ async def send_message(
     args, sender_queue, status_updates_queue, connection_queue
 ):
     try:
+        print(f"name = {args.name}")
         status_updates_queue.put_nowait(
             SendingConnectionStateChanged.INITIATED,
         )
@@ -80,7 +80,7 @@ async def send_message(
                 name = args.name if args.name else get_name_from_input()
                 sanitized_name = sanitize(name)
                 await register(
-                    sanitized_name, reader, writer, connection_queue
+                    sanitized_name, reader, writer, connection_queue,status_updates_queue
                 )
 
             while True:
@@ -140,7 +140,7 @@ async def authorize(
         )
 
 
-async def register(name, reader, writer, connection_queue):
+async def register(name, reader, writer, connection_queue, status_updates_queue):
     writer.write("\n".encode())
     await writer.drain()
 
@@ -156,6 +156,9 @@ async def register(name, reader, writer, connection_queue):
     info_json = data.decode().strip()
     user_info_dict = json.loads(info_json)
     await save_token(user_info_dict["account_hash"])
+    status_updates_queue.put_nowait(
+        NicknameReceived(user_info_dict["nickname"]),
+    )
 
     writer.write("\n".encode())
     await writer.drain()
