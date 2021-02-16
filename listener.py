@@ -29,12 +29,6 @@ def get_args():
         help="port of sender client",
         default=5000,
     )
-    parser.add(
-        "--log_path",
-        required=False,
-        help="sender log path",
-        default="./listener.log",
-    )
 
     return parser.parse_args()
 

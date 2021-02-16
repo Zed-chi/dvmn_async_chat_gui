@@ -31,20 +31,7 @@ def get_args():
         help="port of sender client",
         default=5050,
     )
-    parser.add("--token", help="token", required=False)
-    parser.add(
-        "--log_path",
-        required=False,
-        help="sender log path",
-        default="./sender.log",
-    )
-    parser.add(
-        "--name",
-        required=False,
-        help="name for registration",
-    )
-    parser.add("--message", help="message to send")
-
+    parser.add("--token", help="token", required=False)    
     return parser.parse_args()
 
 
