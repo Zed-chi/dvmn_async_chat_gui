@@ -117,7 +117,9 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except EmptyTokenError:
-        window = RegistrationWindow(CONFIG_FILEPATH, sender_args.host, sender_args.port)
+        window = RegistrationWindow(
+            CONFIG_FILEPATH, sender_args.host, sender_args.port
+        )
         window.run()
     except AuthError as e:
         root = tk.Tk()
