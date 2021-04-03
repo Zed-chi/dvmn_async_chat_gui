@@ -17,7 +17,7 @@ class RegistrationWindow:
         )
         self.label.pack()
         self.name_input = tk.Entry()
-        self.name_input.bind("<KeyPress>", self.validateInput)
+        self.name_input.bind("<KeyPress>", self.validate_input)
         self.name_input.pack()
         self.send_button = tk.Button(
             text="Далее", state=DISABLED, command=self.run_register
