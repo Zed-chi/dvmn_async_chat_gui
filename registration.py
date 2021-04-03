@@ -20,7 +20,7 @@ class RegistrationWindow:
         self.name_input.bind("<KeyPress>", self.validate_input)
         self.name_input.pack()
         self.send_button = tk.Button(
-            text="Далее", state=DISABLED, command=self.run_register
+            text="Далее", state=DISABLED, command=self.run_registration
         )
         self.send_button.pack()
         self.root.mainloop()
@@ -36,12 +36,12 @@ class RegistrationWindow:
         else:
             self.send_button["state"] = DISABLED
 
-    def run_register(self):
+    def run_registration(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.register())
+        loop.run_until_complete(self.registrate_user())
 
-    async def register(self):
+    async def registrate_user(self):
         name = self.name_input.get()
         r, w = await asyncio.open_connection(self.host, self.port)
         try:
