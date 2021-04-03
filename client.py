@@ -7,9 +7,9 @@ from tkinter import messagebox
 
 import gui
 from gui import TkAppClosed
-from listener import get_args as listen_args
+from listener import get_args as get_listener_args
 from listener import read_msgs
-from sender import get_args as send_args
+from sender import get_args as get_sender_args
 from sender import send_message, AuthError, CONFIG_FILEPATH
 from registration import RegistrationWindow
 
@@ -24,8 +24,8 @@ class EmptyTokenError(Exception):
 
 async def main():
     try:
-        listener_args = listen_args()
-        sender_args = send_args()
+        listener_args = get_listener_args()
+        sender_args = get_sender_args()
 
         if not sender_args.token:
             raise EmptyTokenError()
@@ -81,7 +81,7 @@ async def handle_connection(
     sender_args,
 ):
     connection_queue = asyncio.Queue()
-    sender_args = send_args()
+    # sender_args = get_sender_args()
     while True:
         try:
             async with create_task_group() as tg:
@@ -107,17 +107,17 @@ async def handle_connection(
                 await tg.spawn(connection_routine, connection_queue)
         except (ConnectionError, TimeoutError, gaierror):
             now = round(time.time())
-            print(f"[{now}] 1s timeout is elapsed")            
+            print(f"[{now}] 1s timeout is elapsed")
             await asyncio.sleep(5)
             print("Connection lost... Reconnecting")
-            
 
 
 if __name__ == "__main__":
+    sender_args = get_sender_args()
     try:
         asyncio.run(main())
     except EmptyTokenError:
-        RegistrationWindow(CONFIG_FILEPATH, send_args().host, send_args().port)
+        RegistrationWindow(CONFIG_FILEPATH, sender_args.host, sender_args.port)
     except AuthError as e:
         root = tk.Tk()
         root.withdraw()
