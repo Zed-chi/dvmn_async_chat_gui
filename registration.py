@@ -25,7 +25,7 @@ class RegistrationWindow:
         self.send_button.pack()
         self.root.mainloop()
 
-    def validateInput(self, evt):
+    def validate_input(self, evt):
         text = self.name_input.get()
         sanitized_text = sanitize(text)
 
