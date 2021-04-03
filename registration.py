@@ -13,17 +13,18 @@ class RegistrationWindow:
         self.port = int(port)
         self.root = tk.Tk()
         self.label = tk.Label(
-            text="Токен не найден. Введите имя для регистрации."
+            text="Токен не найден. Введите имя для регистрации.",
         )
         self.label.pack()
         self.name_input = tk.Entry()
         self.name_input.bind("<KeyPress>", self.validate_input)
         self.name_input.pack()
         self.send_button = tk.Button(
-            text="Далее", state=DISABLED, command=self.run_registration
+            text="Далее",
+            state=DISABLED,
+            command=lambda: asyncio.run(self.register_user()),
         )
         self.send_button.pack()
-        
 
     def validate_input(self, evt):
         text = self.name_input.get()
@@ -39,12 +40,7 @@ class RegistrationWindow:
     def run(self):
         self.root.mainloop()
 
-    def run_registration(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.registrate_user())
-
-    async def registrate_user(self):
+    async def register_user(self):
         name = self.name_input.get()
         r, w = await asyncio.open_connection(self.host, self.port)
         try:
@@ -52,7 +48,7 @@ class RegistrationWindow:
             w.write("\n".encode())
             print(await r.readline())
             w.write(f"{name}\n".encode())
-            response_data = await r.readline().decode()
+            response_data = (await r.readline()).decode()
             json_text = response_data.split("\n")[0]
             user_dict = json.loads(json_text)
             self.save_token(user_dict["account_hash"])
