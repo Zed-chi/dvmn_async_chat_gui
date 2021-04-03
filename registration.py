@@ -16,25 +16,25 @@ class RegistrationWindow:
             text="Токен не найден. Введите имя для регистрации."
         )
         self.label.pack()
-        self.nameInput = tk.Entry()
-        self.nameInput.bind("<KeyPress>", self.validateInput)
-        self.nameInput.pack()
-        self.sendButton = tk.Button(
+        self.name_input = tk.Entry()
+        self.name_input.bind("<KeyPress>", self.validateInput)
+        self.name_input.pack()
+        self.send_button = tk.Button(
             text="Далее", state=DISABLED, command=self.run_register
         )
-        self.sendButton.pack()
+        self.send_button.pack()
         self.root.mainloop()
 
     def validateInput(self, evt):
-        text = self.nameInput.get()
+        text = self.name_input.get()
         sanitized_text = sanitize(text)
 
         evt.widget.delete(0, tk.END)
         evt.widget.insert(0, sanitized_text)
         if sanitized_text:
-            self.sendButton["state"] = NORMAL
+            self.send_button["state"] = NORMAL
         else:
-            self.sendButton["state"] = DISABLED
+            self.send_button["state"] = DISABLED
 
     def run_register(self):
         loop = asyncio.new_event_loop()
@@ -42,7 +42,7 @@ class RegistrationWindow:
         loop.run_until_complete(self.register())
 
     async def register(self):
-        name = self.nameInput.get()
+        name = self.name_input.get()
         r, w = await asyncio.open_connection(self.host, self.port)
         try:
             print(await r.readline())
