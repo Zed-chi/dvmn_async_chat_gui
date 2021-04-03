@@ -49,8 +49,9 @@ class RegistrationWindow:
             w.write("\n".encode())
             print(await r.readline())
             w.write(f"{name}\n".encode())
-            data = (await r.readline()).decode().split("\n")[0]
-            user_dict = json.loads(data)
+            response_data = await r.readline().decode()
+            json_text = response_data.split("\n")[0]
+            user_dict = json.loads(json_text)
             self.save_token(user_dict["account_hash"])
         finally:
             w.close()
