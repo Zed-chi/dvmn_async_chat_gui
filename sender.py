@@ -31,7 +31,7 @@ def get_args():
         help="port of sender client",
         default=5050,
     )
-    parser.add("--token", help="token", required=False)    
+    parser.add("--token", help="token", required=False)
     return parser.parse_args()
 
 
