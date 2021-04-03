@@ -23,7 +23,7 @@ class RegistrationWindow:
             text="Далее", state=DISABLED, command=self.run_registration
         )
         self.send_button.pack()
-        self.root.mainloop()
+        
 
     def validate_input(self, evt):
         text = self.name_input.get()
@@ -35,6 +35,9 @@ class RegistrationWindow:
             self.send_button["state"] = NORMAL
         else:
             self.send_button["state"] = DISABLED
+
+    def run(self):
+        self.root.mainloop()
 
     def run_registration(self):
         loop = asyncio.new_event_loop()
@@ -64,4 +67,5 @@ class RegistrationWindow:
 
 
 if __name__ == "__main__":
-    RegistrationWindow("qwe", "minechat.dvmn.org", 5050)
+    window = RegistrationWindow("qwe", "minechat.dvmn.org", 5050)
+    window.run()
