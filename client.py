@@ -52,25 +52,33 @@ async def main():
 
 
 async def connection_routine(connection_queue):
-    status = "Connection is alive"
+    #status = "Connection is alive"
     while True:
         async with timeout(5):
             msg = await connection_queue.get()
             now = round(time.time())
-            print(f"[{now}] {status}. {msg}")
+            print(f"[{now}] {msg}")
 
 
 async def ping_pong(args):
+    reader, writer = await asyncio.open_connection(
+        args.host,
+        args.port,
+    )
     while True:
-        async with timeout(60):
+        try:
+            async with timeout(60):                
+                writer.write("\n".encode())
+                await writer.drain()
+                await reader.readline()
+                await asyncio.sleep(10)
+        except:
             reader, writer = await asyncio.open_connection(
                 args.host,
                 args.port,
             )
-            writer.write("\n".encode())
-            await writer.drain()
-            await reader.readline()
-            await asyncio.sleep(10)
+        finally:
+            writer.close()
 
 
 async def handle_connection(
@@ -80,8 +88,7 @@ async def handle_connection(
     listener_args,
     sender_args,
 ):
-    connection_queue = asyncio.Queue()
-    # sender_args = get_sender_args()
+    connection_queue = asyncio.Queue()    
     while True:
         try:
             async with create_task_group() as tg:
