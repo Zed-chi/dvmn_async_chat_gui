@@ -12,10 +12,12 @@ from listener import read_msgs
 from sender import get_args as get_sender_args
 from sender import send_message, AuthError, CONFIG_FILEPATH
 from registration import RegistrationWindow
-
 from anyio import create_task_group
 from async_timeout import timeout
 from requests.exceptions import ConnectionError
+
+
+RECONNECT_DELAY = 5
 
 
 class EmptyTokenError(Exception):
@@ -44,7 +46,10 @@ async def main():
                 sender_args,
             )
             await tg.spawn(
-                gui.draw, messages_queue, sending_queue, status_updates_queue
+                gui.draw,
+                messages_queue,
+                sending_queue,
+                status_updates_queue,
             )
 
     except (KeyboardInterrupt, TkAppClosed):
@@ -52,7 +57,6 @@ async def main():
 
 
 async def connection_routine(connection_queue):
-    #status = "Connection is alive"
     while True:
         async with timeout(5):
             msg = await connection_queue.get()
@@ -67,12 +71,12 @@ async def ping_pong(args):
     )
     while True:
         try:
-            async with timeout(60):                
+            async with timeout(60):
                 writer.write("\n".encode())
                 await writer.drain()
                 await reader.readline()
                 await asyncio.sleep(10)
-        except:
+        except(ConnectionError, TimeoutError, gaierror):
             reader, writer = await asyncio.open_connection(
                 args.host,
                 args.port,
@@ -88,7 +92,7 @@ async def handle_connection(
     listener_args,
     sender_args,
 ):
-    connection_queue = asyncio.Queue()    
+    connection_queue = asyncio.Queue()
     while True:
         try:
             async with create_task_group() as tg:
@@ -113,10 +117,10 @@ async def handle_connection(
                 )
                 await tg.spawn(connection_routine, connection_queue)
         except (ConnectionError, TimeoutError, gaierror):
-            now = round(time.time())
-            print(f"[{now}] 1s timeout is elapsed")
-            await asyncio.sleep(5)
-            print("Connection lost... Reconnecting")
+            print(
+                f"Connection lost... Reconnecting after {RECONNECT_DELAY} seconds",
+            )
+            await asyncio.sleep(RECONNECT_DELAY)
 
 
 if __name__ == "__main__":
@@ -125,7 +129,9 @@ if __name__ == "__main__":
         asyncio.run(main())
     except EmptyTokenError:
         window = RegistrationWindow(
-            CONFIG_FILEPATH, sender_args.host, sender_args.port
+            CONFIG_FILEPATH,
+            sender_args.host,
+            sender_args.port,
         )
         window.run()
     except AuthError as e:
