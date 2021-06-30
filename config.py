@@ -35,14 +35,8 @@ def get_args():
     parser.add(
         "--history_path",
         required=False,
-        help="listener log path",
+        help="messages log path",
         default="./history.log",
-    )
-    parser.add(
-        "--sender_log_path",
-        required=False,
-        help="sender log path",
-        default="./sender.log",
     )
     return parser.parse_args()
 
