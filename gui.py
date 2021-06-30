@@ -1,7 +1,7 @@
-import tkinter as tk
 import asyncio
-from tkinter.scrolledtext import ScrolledText
+import tkinter as tk
 from enum import Enum
+from tkinter.scrolledtext import ScrolledText
 
 from anyio import create_task_group
 
@@ -153,8 +153,10 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
     conversation_panel.pack(side="top", fill="both", expand=True)
 
     async with create_task_group() as tg:
-        await tg.spawn(update_tk, root_frame)
-        await tg.spawn(
-            update_conversation_history, conversation_panel, messages_queue
+        tg.start_soon(update_tk, root_frame)
+        tg.start_soon(
+            update_conversation_history,
+            conversation_panel,
+            messages_queue,
         )
-        await tg.spawn(update_status_panel, status_labels, status_updates_queue)
+        tg.start_soon(update_status_panel, status_labels, status_updates_queue)
