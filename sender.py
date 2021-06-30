@@ -1,110 +1,57 @@
 import asyncio
 import json
-import logging
 
-import configargparse
-
-from gui import NicknameReceived, SendingConnectionStateChanged
-
-CONFIG_FILEPATH = "./sender_config.cfg"
+from gui import NicknameReceived
 
 
-class AuthError(Exception):
+class TokenValidException(Exception):
     pass
 
 
-def get_args():
-    parser = configargparse.ArgParser(
-        default_config_files=[
-            CONFIG_FILEPATH,
-        ],
-    )
-    parser.add(
-        "--host",
-        required=False,
-        help="host address",
-        default="minechat.dvmn.org",
-    )
-    parser.add(
-        "--port",
-        required=False,
-        help="port of sender client",
-        default=5050,
-    )
-    parser.add("--token", help="token", required=False)
-    return parser.parse_args()
-
-
 async def send_message(
-    args, sender_queue, status_updates_queue, connection_queue
+    connection,
+    sending_queue: asyncio.Queue,
+    watchdog_queue: asyncio.Queue,
 ):
-    status_updates_queue.put_nowait(
-        SendingConnectionStateChanged.INITIATED,
-    )
-    reader, writer = await asyncio.open_connection(
-        args.host,
-        args.port,
-    )
-    status_updates_queue.put_nowait(
-        SendingConnectionStateChanged.ESTABLISHED,
-    )
-    try:
-        data = await reader.readline()
-        connection_queue.put_nowait("Prompt before auth")
-        logging.info(data.decode())
+    reader, writer = connection["reader"], connection["writer"]
 
-        await authorize(
-            args.token,
-            reader,
-            writer,
-            status_updates_queue,
-            connection_queue,
-        )
+    await reader.readline()
 
-        while True:
-            message = await sender_queue.get()
-            sanitized_message = sanitize(message)
-            await submit_message(
-                sanitized_message, reader, writer, connection_queue
-            )
-    finally:
-        status_updates_queue.put_nowait(
-            SendingConnectionStateChanged.CLOSED,
-        )
-        writer.close()
-        await writer.wait_closed()
+    while True:
+        msg = await sending_queue.get()
+        sanitized_message = sanitize(msg)
+        await submit_message(sanitized_message, reader, writer)
+        watchdog_queue.put_nowait("post")
 
 
-async def submit_message(message, reader, writer, connection_queue):
+async def submit_message(message, reader, writer):
     if not message:
         return
     writer.write(f"{message}\n\n".encode())
     await writer.drain()
-
     await reader.readline()
-    connection_queue.put_nowait("Message accepted")
 
 
 async def authorize(
-    token, reader, writer, status_updates_queue, connection_queue
+    token,
+    connection,
+    status_queue: asyncio.Queue,
+    watchdog_queue: asyncio.Queue,
 ):
+    reader, writer = connection["reader"], connection["writer"]
+    data = await reader.readline()
     writer.write(f"{token}\n".encode())
     await writer.drain()
 
     data = await reader.readline()
     response_info = data.decode().strip()
-    connection_queue.put_nowait("Auth info response")
 
-    user_info_dict = json.loads(response_info)
-    if not user_info_dict:
-        raise AuthError("Invalid token. Check or register new.")
-    else:
-        print(
-            f"Выполнена авторизация. Пользователь {user_info_dict['nickname']}.",
-        )
-        status_updates_queue.put_nowait(
-            NicknameReceived(user_info_dict["nickname"]),
-        )
+    if not json.loads(response_info):
+        raise TokenValidException("Invalid token. Check or register new.")
+    status_queue.put_nowait(
+        NicknameReceived(json.loads(response_info)["nickname"]),
+    )
+    watchdog_queue.put_nowait("auth")
 
 
 def sanitize(string):
