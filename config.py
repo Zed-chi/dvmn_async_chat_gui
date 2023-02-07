@@ -6,7 +6,6 @@ PING_TIMEOUT = 20
 PING_SLEEPTIME = 20
 
 
-
 def get_args():
     parser = configargparse.ArgParser(
         default_config_files=[

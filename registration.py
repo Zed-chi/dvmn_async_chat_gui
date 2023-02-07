@@ -1,7 +1,7 @@
 import asyncio
 import json
 import tkinter as tk
-from tkinter import Tk, messagebox
+from tkinter import messagebox
 from tkinter.constants import DISABLED, NORMAL
 
 from sender import sanitize

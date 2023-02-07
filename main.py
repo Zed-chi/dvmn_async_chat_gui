@@ -2,13 +2,12 @@ import asyncio
 import logging
 import os
 import time
-from asyncio.futures import CancelledError
+from asyncio.exceptions import CancelledError
 from concurrent.futures import TimeoutError
 from socket import gaierror
-from tkinter import Tk, messagebox
+from tkinter import messagebox, TclError
 
-from anyio import TASK_STATUS_IGNORED, create_task_group, run
-from anyio.abc import TaskStatus
+from anyio import create_task_group, run
 from async_timeout import timeout
 
 from config import CONFIG_FILEPATH, PING_SLEEPTIME, PING_TIMEOUT, TIMEOUT, args
@@ -78,7 +77,6 @@ async def init():
 
 
 async def main():
-
     queues["messages"] = asyncio.Queue()
     queues["logging"] = asyncio.Queue()
     queues["sending"] = asyncio.Queue()
@@ -140,14 +138,14 @@ async def handle_connection():
         try:
             logging.info("Connecting")
             await init()
-            """ 
-            Ожидание иницициализации из-за ошибки 
-            RuntimeError: readuntil() called while another coroutine is already waiting for incoming data
+            """
+            Ожидание иницициализации из-за ошибки
+            RuntimeError: readuntil() called while another coroutine
+            is already waiting for incoming data
             """
             await asyncio.sleep(2)
 
             async with create_task_group() as tg:
-
                 tg.start_soon(
                     read_msgs,
                     connections["listener"],
@@ -223,3 +221,5 @@ if __name__ == "__main__":
             run(main)
     except KeyboardInterrupt:
         logging.info("keyboard interrupt")
+    except TclError:
+        pass
